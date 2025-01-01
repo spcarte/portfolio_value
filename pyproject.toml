@@ -1,3 +1,7 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "portfolio_value"
 version = "0.0.1"
@@ -11,6 +15,13 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "License :: OSI Approved :: BSD 3-Clause License",
     "Operating System :: OS Independent",
+]
+dependencies = [
+    "numpy",
+    "pandas",
+    "holidays",
+    "matplotlib",
+    "scipy"
 ]
 
 [project.urls]
