@@ -1,0 +1,17 @@
+[project]
+name = "portfolio_value"
+version = "0.0.1"
+authors = [
+  { name="Steven Carter", email="spcarter@mtu.edu" },
+]
+description = "A small package to compute the future value of stock portfolios"
+readme = "README.md"
+requires-python = ">=3.10"
+classifiers = [
+    "Programming Language :: Python :: 3",
+    "License :: OSI Approved :: BSD 3-Clause License",
+    "Operating System :: OS Independent",
+]
+
+[project.urls]
+Homepage = "https://github.com/spcarte/portfolio_value"
