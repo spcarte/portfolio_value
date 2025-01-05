@@ -200,8 +200,9 @@ class FundValue:
         if transactions is not None:
             for ii in range(transactions.shape[0]):
                 transaction_date = transactions.index[ii].to_pydatetime()
-                day_ind = np.where(np.array([int((np.array(self._predicted_value_date_range_)-transaction_date)[ii].total_seconds()) for ii in range(len(self._predicted_value_date_range_))])>=0)[0].min()
-                self._predicted_time_value_realizations_[day_ind,:] = transactions['Amount'][ii]
+                transaction_date_deltas = np.array([self._predicted_value_date_range_[kk].timestamp()-transaction_date.timestamp() for kk in range(len(self._predicted_value_date_range_))])
+                day_ind = np.where(transaction_date_deltas>0)[0].min()
+                self._predicted_time_value_realizations_[day_ind,:] += transactions['Amount'][ii]
         for ii in range(1,business_days_to_end):
             self._predicted_time_value_realizations_[ii,:] += self._predicted_time_value_realizations_[ii-1,:]*daily_returns[ii,:]
                 
