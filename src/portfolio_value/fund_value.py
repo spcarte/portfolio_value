@@ -6,38 +6,13 @@ mutual fund or stock
 import numpy as np
 import pandas as pd
 import datetime as dt
-import holidays
 import matplotlib.pyplot as plt
 from scipy.stats import norm
-
-def is_weekday(date):
-  return date.weekday() < 5  # Monday to Friday
-
-def business_days_between(start_date, end_date, country_code='US'):
-  us_holidays = holidays.country_holidays(country_code)
-  business_days = 0
-  date = start_date
-  while date <= end_date:
-    if is_weekday(date) and date not in us_holidays:
-      business_days += 1
-    date += dt.timedelta(days=1)
-  return business_days
-
-def business_day_vector_to_target(start_date, end_date):
-    us_holidays = holidays.UnitedStates()
-    business_days = []
-    current_date = start_date
-    one_day = dt.timedelta(days=1)
-
-    while current_date <= end_date:
-        if is_weekday(current_date) and current_date not in us_holidays:
-            business_days.append(current_date)
-        current_date += one_day
-    return business_days
+from .date_utilities import (business_days_between, business_day_vector_to_target)
 
 class FundValue:
     """
-    Creates an object to predict the future value of a stock or mutual fund. 
+    Creates an object to predict the future value of a single stock or mutual fund. 
 
     Properties
     ----------
@@ -216,8 +191,28 @@ class FundValue:
         """
         return self._predicted_time_value_realizations_.mean(axis=1)
     
+    def future_fund_value_quantile(self, quantile):
+        """
+        Computes the given quantile of the predicted future time-value
+        of the fund from the Monte Carlo simulations. 
+
+        Parameters
+        ----------
+        quantile : float
+            The desired quantile, ranging from 0-1 (so the 5th 
+            percentile is given as 0.05).
+        
+        Returns
+        -------
+        ndarray
+            The quantile for the predicted future time-value
+        """
+        return np.quantile(self._predicted_time_value_realizations_, quantile, axis=1)
+
     def future_fund_value_std_dev(self, sigma):
         """
+        ***This is not a good method to use because the future value follows a log normal distribution***
+
         Computes the expected (i.e., mean) future time-value of the fund
         with the specified number of standard deviations applied.
 
