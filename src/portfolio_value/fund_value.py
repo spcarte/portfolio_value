@@ -7,6 +7,7 @@ import numpy as np
 import pandas as pd
 import datetime as dt
 import matplotlib.pyplot as plt
+from matplotlib.ticker import FuncFormatter
 from scipy.stats import norm
 from .date_utilities import (business_days_between, business_day_vector_to_target)
 
@@ -230,3 +231,28 @@ class FundValue:
         """
         std_dev = self._predicted_time_value_realizations_.std(axis=1)
         return self._predicted_time_value_realizations_.mean(axis=1) + sigma*std_dev
+    
+    def plot_expected_value(self, quantiles=None):
+        """
+        Plots the expected value of the fund with the desired quantiles.
+
+        Parameters
+        ----------
+        quantiles : iterable, optional
+            An iterable of the quantiles to plot along with the expected value. 
+        """
+        fig, ax =plt.subplots()
+        ax.plot(self.predicted_value_date_range, self.expected_future_fund_value, label = 'Expected Value: ${:,.2f}'.format(np.round(self.expected_future_fund_value[-1])))
+        if quantiles is not None:
+            for quantile in quantiles:
+                quantile_value = self.future_fund_value_quantile(quantile)
+                ax.plot(self.predicted_value_date_range, quantile_value, label = '{:} Quantile: ${:,.2f}'.format(quantile, quantile_value.max()))
+        ax.grid()
+        ax.set_ylabel('Mutual Fund Value')
+        ax.set_xlabel('Date')
+        ax.set_xlim(left=self.predicted_value_date_range[0], right=self.predicted_value_date_range[-1])
+        ax.set_ylim(bottom=0)
+        ax.legend(loc='upper left')
+        ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{x:,.0f}'))
+        fig.tight_layout()
+        return fig, ax
