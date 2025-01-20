@@ -40,7 +40,7 @@ class FundValue:
             The initial amount that is invested in the fund.  
         """        
         # Initial values that are determined from the historical data
-        self._historical_data_ = historical_data
+        self.historical_data = historical_data
         self._initial_value_ = float(initial_value)
         self._log_return_ = np.log(1+self._historical_data_.pct_change().to_numpy())[1:]
         self._average_return_ = self._log_return_.mean()
