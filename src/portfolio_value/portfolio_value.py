@@ -17,7 +17,7 @@ class PortfolioValue:
     Properties
     ----------
     lots of missing properties 
-    
+
     predicted_value_date_range : datetime
         A datetime vector for the predicted time-value of the fund.
     predicted_time_value_realizations : ndarray
@@ -42,7 +42,10 @@ class PortfolioValue:
         fund_allocations : DataFrame
             A Pandas DataFrame with the fund allocation (through the 
             target date for the portfolio), where The columns are labeled 
-            with the stock ticker for each stock in the fund. 
+            with the stock ticker for each stock in the fund. The simulations
+            assume that the portfolio allocation on the provided dates (i.e.,
+            the allocations use a "previous" interpolation from the provided
+            dates to the daily dates for a simulation).
         initial_value : float
             The initial amount that is invested in the portfolio (the sum 
             for all the investment).  

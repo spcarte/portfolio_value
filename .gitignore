@@ -6,3 +6,4 @@ src/portfolio_value.egg-info/top_level.txt
 src/portfolio_value/__pycache__/fund_value.cpython-310.pyc
 src/portfolio_value/__pycache__/__init__.cpython-310.pyc
 src/portfolio_value/__pycache__/date_utilities.cpython-310.pyc
+src/portfolio_value/__pycache__/portfolio_value.cpython-310.pyc
