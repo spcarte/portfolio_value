@@ -9,19 +9,49 @@ import numpy as np
 from scipy.interpolate import interp1d
 
 def is_weekday(date):
-  return date.weekday() < 5  # Monday to Friday
+    return date.weekday() < 5  # Monday to Friday
 
 def business_days_between(start_date, end_date, country_code='US'):
-  us_holidays = holidays.country_holidays(country_code)
-  business_days = 0
-  date = start_date
-  while date <= end_date:
-    if is_weekday(date) and date not in us_holidays:
-      business_days += 1
-    date += dt.timedelta(days=1)
-  return business_days
+    """
+    Computes the number of business days between the start and end dates.
+
+    Parameters
+    ----------
+    start_date : datetime
+        The start date.
+    start_date : datetime
+        The start date.
+    country_code : str
+        The country code for determining if a date is a holiday. The 
+        default is 'US'.
+    """
+    holidays = holidays.country_holidays(country_code)
+    business_days = 0
+    date = start_date
+    while date <= end_date:
+        if is_weekday(date) and date not in holidays:
+        business_days += 1
+        date += dt.timedelta(days=1)
+    return business_days
 
 def business_day_vector_to_target(start_date, end_date):
+    """
+    Creates a list of datetime values at the business days between the 
+    provided dates.
+
+    Parameters
+    ----------
+    start_date : datetime
+        The start date of the date time list.
+    end_date : datetime
+        The end date of the date time list.
+
+    Returns
+    -------
+    business_days : datetime
+        A list of datetime values with the business days between the 
+        start and end dates.
+    """
     us_holidays = holidays.UnitedStates()
     business_days = []
     current_date = start_date
@@ -32,6 +62,26 @@ def business_day_vector_to_target(start_date, end_date):
             business_days.append(current_date)
         current_date += one_day
     return business_days
+
+def find_nearest_date_index(want_date, date_range):
+    """
+    Finds the index where a list of dates is closest to a desired date.
+
+    Parameters
+    ----------
+    want_date : datetime
+        The desired date to find in the list of dates.
+    date_range : datetime
+        A list of datetime values to search through
+
+    Returns
+    -------
+    day_ind : int
+        The index in date_range that corresponds to the date that is 
+        closest to want_date.
+    """
+    date_deltas = np.array([date_range[kk].timestamp()-want_date.timestamp() for kk in range(len(date_range))])
+    return np.where(date_deltas>0)[0].min()
 
 def interpolate_time_value(original_dates, original_value, want_dates, interpolation_type='linear'):
     """

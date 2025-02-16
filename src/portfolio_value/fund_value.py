@@ -9,7 +9,7 @@ import datetime as dt
 import matplotlib.pyplot as plt
 from matplotlib.ticker import FuncFormatter
 from scipy.stats import norm
-from .date_utilities import (business_days_between, business_day_vector_to_target)
+from .date_utilities import (business_days_between, business_day_vector_to_target, find_nearest_date_index)
 
 class FundValue:
     """
@@ -61,7 +61,7 @@ class FundValue:
 
     @historical_data.setter
     def historical_data(self, data):
-        if data.shape[1] != 1:
+        if len(data.shape) != 1:
             raise ValueError('The historical_data DataFrame should have a single column')
         self._historical_data_ = data
     
@@ -175,9 +175,7 @@ class FundValue:
         self._predicted_time_value_realizations_[0,:] = self._initial_value_
         if transactions is not None:
             for ii in range(transactions.shape[0]):
-                transaction_date = transactions.index[ii].to_pydatetime()
-                transaction_date_deltas = np.array([self._predicted_value_date_range_[kk].timestamp()-transaction_date.timestamp() for kk in range(len(self._predicted_value_date_range_))])
-                day_ind = np.where(transaction_date_deltas>0)[0].min()
+                day_ind = find_nearest_date_index(transactions.index[ii].to_pydatetime(), self._predicted_value_date_range_)
                 self._predicted_time_value_realizations_[day_ind,:] += transactions['Amount'][ii]
         for ii in range(1,business_days_to_end):
             self._predicted_time_value_realizations_[ii,:] += self._predicted_time_value_realizations_[ii-1,:]*daily_returns[ii,:]
