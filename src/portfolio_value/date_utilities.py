@@ -110,6 +110,6 @@ def interpolate_time_value(original_dates, original_value, want_dates, interpola
         A 1d array of values that correspond to the want_dates
     """
     original_dates_between = np.cumsum(np.insert(np.array([(original_dates[ii+1]-original_dates[ii]).days for ii in range(len(original_dates)-1)]), 0, 0))
-    want_dates_between = np.cumsum(np.insert(np.array([(want_dates[ii+1]-want_dates[ii]).days for ii in range(len(want_dates)-1)]), 0, 0))
+    want_dates_between = np.cumsum(np.insert(np.array([(want_dates[ii+1]-want_dates[ii]).days for ii in range(len(want_dates)-1)]), 0, 0))+original_dates_between[find_nearest_date_index(want_dates[0], original_dates)-1]
     interpolation_function = interp1d(original_dates_between, original_value, kind=interpolation_type, bounds_error=False, fill_value=(original_value[0], original_value[-1]))
     return interpolation_function(want_dates_between)
