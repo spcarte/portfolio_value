@@ -24,13 +24,18 @@ def business_days_between(start_date, end_date, country_code='US'):
     country_code : str
         The country code for determining if a date is a holiday. The 
         default is 'US'.
+    
+    Returns
+    -------
+    business_days : int
+        The business days between the start and end dates.
     """
-    holidays = holidays.country_holidays(country_code)
+    holiday_calendar = holidays.country_holidays(country_code)
     business_days = 0
     date = start_date
     while date <= end_date:
-        if is_weekday(date) and date not in holidays:
-        business_days += 1
+        if is_weekday(date) and date not in holiday_calendar:
+            business_days += 1
         date += dt.timedelta(days=1)
     return business_days
 
