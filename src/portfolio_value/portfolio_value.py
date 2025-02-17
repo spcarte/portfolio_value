@@ -193,7 +193,7 @@ class PortfolioValue:
             with a columns for each ticker and the total value.
         """
         value_dict = {'Total':np.quantile(self._predicted_time_value_realizations_[0,...], quantile, axis=-1)}
-        for ii in range(len(test_object._tickers_)):
+        for ii in range(len(self._tickers_)):
             value_dict[self._tickers_[ii]] = np.quantile(self._predicted_time_value_realizations_[ii,...], quantile, axis=-1)
         
         return pd.DataFrame(data=value_dict, index=self._predicted_value_date_range_)
