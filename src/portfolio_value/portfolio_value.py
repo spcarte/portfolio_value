@@ -91,6 +91,21 @@ class PortfolioValue:
         self._historical_data_ = data
 
     @property
+    def tickers(self):
+        return self._tickers_
+    
+    @property
+    def historical_log_returns(self):
+        """
+        Returns the log returns from the historical data as a Pandas Dataframe.
+        """
+        log_returns = {}
+        for ii, ticker in enumerate(self._tickers_):
+            log_returns[ticker] = self._log_return_[:,ii]
+        return pd.DataFrame(index=self.historical_data.index[1:],
+                            data=log_returns)
+
+    @property
     def allocations(self):
         """
         A Pandas DataFrame of the portfolio allocations. 
