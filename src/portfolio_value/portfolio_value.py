@@ -10,6 +10,7 @@ import matplotlib.pyplot as plt
 from scipy.stats import norm
 from .date_utilities import (business_days_between, business_day_vector_to_target, 
                              find_nearest_date_index, interpolate_time_value)
+from copy import deepcopy
 
 class PortfolioValue:
     """
@@ -55,21 +56,14 @@ class PortfolioValue:
 
         # Initial values that are determined from the historical data and allocations
         self.historical_data = historical_data
-        self.allocations = fund_allocations[self._tickers_]
+        self.allocations = fund_allocations
         self._initial_value_ = float(initial_value)
         self._log_return_ = np.log(1+self._historical_data_.pct_change().to_numpy())[1:]
 
         # Data for future value predictions
-        self._average_return_ = np.zeros(len(self._tickers_), dtype=float)
-        self._return_variance_ = np.zeros(len(self._tickers_), dtype=float)
-        self._return_std_dev_ = np.zeros(len(self._tickers_), dtype=float)
-        self._drift_ = np.zeros(len(self._tickers_), dtype=float)
-        for ii in range(len(self._tickers_)):
-            ticker_rows = ~np.isnan(self._log_return_[:,ii])
-            self._average_return_[ii] = self._log_return_[ticker_rows,ii].mean()
-            self._return_variance_[ii] = self._log_return_[ticker_rows,ii].var()
-            self._return_std_dev_[ii] = self._log_return_[ticker_rows,ii].std()
-        self._drift_ = self._average_return_ - (0.5*self._return_variance_)
+        self._average_return_ = self._log_return_.mean(axis=0)
+        self._asset_covariance_ = np.cov(self._log_return_.T)
+        self._drift_ = self._average_return_ - (0.5*np.diag(self._asset_covariance_)) # Sometimes called log-drift
 
         # Predicted time-value information, initialized to none
         self._predicted_value_date_range_ = None
@@ -119,12 +113,19 @@ class PortfolioValue:
     def allocations(self, data):
         if self._tickers_ is not None and set(self._tickers_) != set(list(data)):
             raise ValueError('The fund allocation tickers (the DataFrame headers) do not match the object')
-        self._allocation_dates_ = list(data.index.to_pydatetime())
-        self._allocation_values_ = data.to_numpy() 
+        allocations = data[self._tickers_]
+        self._allocation_dates_ = list(allocations.index.to_pydatetime())
+        self._allocation_values_ = allocations.to_numpy() 
+
+    def copy(self):
+        """
+        Makes a deep copy of the PortfolioValue object.
+        """
+        return deepcopy(self)
 
     def predict_value_monte_carlo(self, end_date, start_date=None, 
                                   number_of_realizations=10000,
-                                  transactions=None):
+                                  transactions=None, rebalance=False):
         """
         Predicts the future potential time-value path of the fund over a number of 
         realizations using the brownian motion formula. 
@@ -143,12 +144,16 @@ class PortfolioValue:
             A Pandas DataFrame with transactions (either deposits or withdrawals)
             into the investment account. The column label for the transaction 
             amount should be 'Amount' (cap sensitive).
+        Rebalance : bool, optional
+            Whether or not to automatically rebalance the the assets in the portfolio
+            per the allocations in the object, interpolated to every day in the 
+            prediction. The default is False. 
 
         Returns
         -------
-        self : FundValue
-            Updated FundValue object with predicted time-value realizations. It is 
-            sized [number of funds + 1, number of days, number of realizations].
+        self : PortfolioValue
+            Updated PortfolioValue object with predicted time-value realizations. It is 
+            sized [number of days, number of realizations, number of funds + 1].
 
         Notes
         -----
@@ -168,26 +173,47 @@ class PortfolioValue:
         self._predicted_value_date_range_ = business_day_vector_to_target(start_date,end_date)
 
         # Compute the random realizations for the daily returns
-        daily_returns = np.zeros((self._drift_.shape[0], business_days_to_end, int(number_of_realizations)), dtype=float)
-        allocation_values = np.zeros((self._drift_.shape[0], business_days_to_end), dtype=float)       
-        for ii in range(self._drift_.shape[0]):
-            z = norm.ppf(np.random.rand(business_days_to_end, int(number_of_realizations)))
-            daily_returns[ii, ...] = np.exp(self._drift_[ii]+self._return_std_dev_[ii]*z)
-            allocation_values[ii, ...] = interpolate_time_value(self._allocation_dates_, self._allocation_values_[:, ii], 
-                                                                self._predicted_value_date_range_, interpolation_type='previous')/100
+        l = np.linalg.cholesky(self._asset_covariance_)
+        z = norm.ppf(np.random.rand(int(number_of_realizations), business_days_to_end, 
+                                    len(self._tickers_)))[...,np.newaxis]
+        daily_returns = np.exp(self._drift_[:,np.newaxis]+l[np.newaxis,np.newaxis,...]@z)[...,0]
 
-        self._predicted_time_value_realizations_ = np.zeros((self._drift_.shape[0]+1, len(self._predicted_value_date_range_), int(number_of_realizations)), dtype=float)
-        self._predicted_time_value_realizations_[0, 0] = self._initial_value_
-        self._predicted_time_value_realizations_[1:,0,:] = allocation_values[:,0][...,np.newaxis]*self._predicted_time_value_realizations_[0, 0,:]
+        # Interpolating the asset allocations to all the simulation dates
+        allocation_values = np.zeros((len(self._tickers_), business_days_to_end), dtype=float)       
+        for ii in range(len(self._tickers_)):
+            allocation_values[ii, ...] = interpolate_time_value(self._allocation_dates_, self._allocation_values_[:, ii], 
+                                                    self._predicted_value_date_range_, interpolation_type='previous')/100
+
+        # Setting the initial values for the time realizations
+        self._predicted_time_value_realizations_ = np.zeros((int(number_of_realizations), business_days_to_end, 
+                                                             len(self._tickers_)+1), dtype=float)
+        self._predicted_time_value_realizations_[:,0,0] = self._initial_value_
+        self._predicted_time_value_realizations_[:,0,1:] = allocation_values[:,0]*self._initial_value_
+        
+        # Applying the transactions, if necessary
         if transactions is not None:
             for ii in range(transactions.shape[0]):
-                day_ind = find_nearest_date_index(transactions.index[ii].to_pydatetime(), self._predicted_value_date_range_)
-                self._predicted_time_value_realizations_[0, day_ind, :] += transactions['Amount'][ii]
+                day_ind = find_nearest_date_index(transactions.index[ii].to_pydatetime(), 
+                                                  self._predicted_value_date_range_)
+                self._predicted_time_value_realizations_[:, day_ind, 0] += transactions['Amount'][ii]
+                self._predicted_time_value_realizations_[:, day_ind, 1:] += (allocation_values[:,0]
+                                                                             *transactions['Amount'][ii])
 
         for ii in range(1,business_days_to_end):
-            for jj in range(self._drift_.shape[0]):
-                self._predicted_time_value_realizations_[0,ii,:] += self._predicted_time_value_realizations_[jj+1,ii-1,:]*daily_returns[jj,ii,:]
-            self._predicted_time_value_realizations_[1:,ii,:] += allocation_values[:,ii][...,np.newaxis]*self._predicted_time_value_realizations_[0,ii,:]  
+            if rebalance is True:
+                # Predict the total value of the portfolio from the previous time step
+                self._predicted_time_value_realizations_[:,ii,0] += np.sum(self._predicted_time_value_realizations_[:,ii-1,1:]
+                                                                        *daily_returns[:,ii,:],axis=-1)
+                # Re-balance the portfolio base on the asset allocations
+                self._predicted_time_value_realizations_[:,ii,1:] += (allocation_values[np.newaxis,:,ii]
+                                                        *self._predicted_time_value_realizations_[:,ii,0][...,np.newaxis])
+            else:
+                # Predict the value of the assets from the previous time step
+                self._predicted_time_value_realizations_[:,ii,1:] += (self._predicted_time_value_realizations_[:,ii-1,1:]
+                                                                      *daily_returns[:,ii,:])
+                # Re-balance the portfolio base on the asset allocations
+                self._predicted_time_value_realizations_[:,ii,0] += np.sum(self._predicted_time_value_realizations_[:,ii,1:],
+                                                                           axis=-1)
         return self
     
     def future_portfolio_value_quantile(self, quantile):
@@ -207,8 +233,12 @@ class PortfolioValue:
             The quantile for the predicted future time-value in a DataFrame
             with a columns for each ticker and the total value.
         """
-        value_dict = {'Total':np.quantile(self._predicted_time_value_realizations_[0,...], quantile, axis=-1)}
+        if self._predicted_time_value_realizations_ is None:
+            raise ValueError('The PortfolioValue object does not have any predicted values')
+        
+        value_dict = {'Total':np.quantile(self._predicted_time_value_realizations_[...,0], quantile, axis=0)}
         for ii in range(len(self._tickers_)):
-            value_dict[self._tickers_[ii]] = np.quantile(self._predicted_time_value_realizations_[ii,...], quantile, axis=-1)
+            value_dict[self._tickers_[ii]] = np.quantile(self._predicted_time_value_realizations_[:,:,ii+1], 
+                                                         quantile, axis=0)
         
         return pd.DataFrame(data=value_dict, index=self._predicted_value_date_range_)
