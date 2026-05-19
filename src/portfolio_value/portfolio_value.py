@@ -242,3 +242,24 @@ class PortfolioValue:
                                                          quantile, axis=0)
         
         return pd.DataFrame(data=value_dict, index=self._predicted_value_date_range_)
+    
+    def future_portfolio_expected_value(self):
+        """
+        Computes the expected value of the portfolio from the Monte 
+        Carlo simulations. 
+        
+        Returns
+        -------
+        DataFrame
+            The expected future time-value in a DataFrame with a 
+            columns for each ticker and the total value.
+        """
+        if self._predicted_time_value_realizations_ is None:
+            raise ValueError('The PortfolioValue object does not have any predicted values')
+        
+        value_dict = {'Total':np.mean(self._predicted_time_value_realizations_[...,0], axis=0)}
+        for ii in range(len(self._tickers_)):
+            value_dict[self._tickers_[ii]] = np.mean(self._predicted_time_value_realizations_[:,:,ii+1], 
+                                                     axis=0)
+        
+        return pd.DataFrame(data=value_dict, index=self._predicted_value_date_range_)
