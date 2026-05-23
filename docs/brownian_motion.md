@@ -1,24 +1,24 @@
 # Drift-Diffusion with Brownian Motion
-Drift-diffusion with brownian motion is a stochastic process that is used to simulate sample paths (akin to a random walk) for random variables. It is modeled for a single sample with:
+Drift-diffusion with brownian motion is a stochastic process that is used to simulate sample paths (akin to a random walk) for random variables. It is modeled for a single stochastic variable with:
 
 $$
 X(t) = {\mu}t + {\sigma}W(t)
 $$
 
-Where $X(t)$ is the sample value, $\mu$ is the mean of the distribution that defines the sample (also referred to as drift), $\sigma$ is the standard deviation of the distribution tha defines the sample (also referred to as volatility), and $W(t)$ is standard brownian motion, which has the following properties:
+Where $X(t)$ is the variable value, $\mu$ is the mean of the distribution that defines the variable (also referred to as drift), $\sigma$ is the standard deviation of the distribution tha defines the variable (also referred to as volatility), and $W(t)$ is standard brownian motion, which has the following properties:
 
 1. $W(0)=0$
 2. $W$ has independent increments, meaning that the future values of $W$ are independent of past values of $W$
 3. $W$ is likely continuous in $t$
 4. The increments of $W$ are normally distributed with mean 0 and variance $dt$
 
-The sample path can also be described with the stochastic differential equation (SDE):
+The variable path can also be described with the stochastic differential equation (SDE):
 
 $$
 dX(t) = {\mu}dt + {\sigma}dW(t)
 $$
 
-Where $dW(t)$ is a series of normally distributed random numbers and $W(t)$ is the cumulative sum of the random numbers. The drift-diffusion model can also be used for multiple samples with:
+Where $dW(t)$ is a series of normally distributed random numbers and $W(t)$ is the cumulative sum of the random numbers. The drift-diffusion model can also be used in the multivariate case with:
 
 $$
 X(t) = {\mu}t + BW(t)
@@ -30,13 +30,13 @@ $$
 dX(t) = {\mu}dt + BdW(t)
 $$
 
-Where there are $d$ samples, $X(t)$ is a vector with length $d$, $\mu$ is a vector of the drift values for each sample with length $d$, $W(t)$ is a vector of independent brownian motion with the length $d$, and $B$ is any matrix that satisfies:
+Where there are $n$ samples, $X(t)$ is a vector with length $n$, $\mu$ is a vector of the drift values for each sample with length $n$, $W(t)$ is a vector of independent brownian motion with the length $n$, and $B$ is any $(n,n)$ matrix that satisfies:
 
 $$
 BB^T=\Sigma
 $$
 
-Where $\Sigma$ is the covariance between samples and $B$ is typically found via the Cholesky decomposition of $\Sigma$. 
+Where $\Sigma$ is the covariance between variables and $B$ is typically found via the Cholesky decomposition of $\Sigma$. 
 
 ## Geometric Brownian Motion for Modeling Stock Returns
 Fractional stock returns can be modeled using the same drift-diffusion model with brownian motion:
@@ -44,6 +44,10 @@ Fractional stock returns can be modeled using the same drift-diffusion model wit
 $$
 \frac{dS(t)}{S(t)} = {\mu}dt +{\sigma}dW(t)
 $$
+
+```{note}
+This model for stock prices uses the same assumptions that for the Brownian motion. A critical assumption is that the stock price can be modeled as a random (non-deterministic) process.
+```
 
 Where $S(t)$ is the stock price. Accordingly, the change in stock price is modeled with:
 
@@ -73,7 +77,7 @@ $$
 df = f'\begin{pmatrix}S(t)\end{pmatrix}dS(t) + \frac{1}{2}f''\begin{pmatrix}S(t)\end{pmatrix}\begin{pmatrix}dS(t)\end{pmatrix}^2
 $$
 
-Where $f\begin{pmatrix}S(t)\end{pmatrix} = ln\begin{pmatrix}S(t)\end{pmatrix}$, since the stock price is assumed to be a stochastic function. The derivatives of the stochastic function are:
+Where $f\begin{pmatrix}S(t)\end{pmatrix} = ln\begin{pmatrix}S(t)\end{pmatrix}$, since the stock price is assumed to be a stochastic function. The derivatives are:
 
 $$
 f'\begin{pmatrix}S(t)\end{pmatrix} = \frac{1}{S(t)}
@@ -157,8 +161,12 @@ $$
 d\begin{pmatrix}S(t)\end{pmatrix} = e^{{\mu} - \frac{1}{2}{\sigma}^2 + {\sigma}dW(t)}
 $$
 
+```{note}
+The above equation was developed for log returns. As such, the drift and volatility should be computed from the log-returns.
+```
+
 ## Adjusting the Model for Multiple Stocks
-The geometric brownian motion model for estimating stock returns can be easily adjusted for multiple stocks. There is some rather complicated It&ocirc; calculus to develop the equations. However, it is relatively intuitive to understand how the following changes modify the model for multiple stocks
+The geometric brownian motion model for estimating stock returns can be easily adjusted for multiple stocks with the same method that was described above for the linear Brownian motion. There is some rather complicated It&ocirc; calculus to develop the equations. However, it is relatively intuitive to understand how the following changes modify the model for multiple stocks
 
 - The returns become a vector with an entry for each stock
 - The log-drift is the same as the univariate case, where it is now a vector with an entry for each stock
@@ -168,13 +176,13 @@ The geometric brownian motion model for estimating stock returns can be easily a
 As such, the geometric brownian motion equation is updated to:
 
 $$
-\begin{Bmatrix}d\begin{pmatrix}S(t)\end{pmatrix}\end{Bmatrix} = e^{\begin{Bmatrix}{\mu} - \frac{1}{2}{\sigma}^2\end{Bmatrix} + \begin{bmatrix}L\end{bmatrix}\begin{Bmatrix}dW(t)\end{Bmatrix}}
+\begin{Bmatrix}d\begin{pmatrix}S(t)\end{pmatrix}\end{Bmatrix} = e^{\begin{Bmatrix}{\mu} - \frac{1}{2}{\sigma}^2\end{Bmatrix} + \begin{bmatrix}B\end{bmatrix}\begin{Bmatrix}dW(t)\end{Bmatrix}}
 $$
 
-Where the L matrix in this equation is the "square root" of the covariance matrix, as defined by:
+Where the $B$ matrix in this equation is the "square root" of the covariance matrix, as defined by:
 
 $$
-\Sigma = LL^T
+\Sigma = BB^T
 $$
 
-Where $\Sigma$ is the covariance between the stocks. The are multiple ways to define L, but a common method is through the Cholesky decomposition of $\Sigma$. Further, $\sigma^2$ can be estimated directly from the data for a single stock or by taking the diagonal of $\Sigma$. 
+Where $\Sigma$ is the covariance between the stocks. The are multiple ways to define $B$, but a common method is through the Cholesky decomposition of $\Sigma$. Further, $\sigma^2$ can be estimated directly from the data for a single stock or by taking the diagonal of $\Sigma$. 
