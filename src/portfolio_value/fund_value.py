@@ -43,10 +43,9 @@ class FundValue:
         self.historical_data = historical_data
         self._initial_value_ = float(initial_value)
         self._log_return_ = np.log(1+self._historical_data_.pct_change().to_numpy())[1:]
-        self._average_return_ = self._log_return_.mean()
-        self._return_variance_ = self._log_return_.var()
-        self._return_std_dev_ = self._log_return_.std()
-        self._drift_ = self._average_return_ - (0.5*self._return_variance_)
+        self._drift_ = self._log_return_.mean()
+        self._volatility_ = self._log_return_.std()
+        self._log_drift_ = self._drift_ - (0.5*self._volatility_**2)
 
         # Predicted time-value information, initialized to none
         self._predicted_value_date_range_ = None
@@ -115,7 +114,7 @@ class FundValue:
             plt.ylabel('Log Return')
             plt.grid()
             plt.xlim(left=self._historical_data_.index.min(), right=self._historical_data_.index.max())
-            plt.hlines(self._average_return_, xmin=self._historical_data_.index.min(), xmax=self._historical_data_.index.max(),
+            plt.hlines(self._drift_, xmin=self._historical_data_.index.min(), xmax=self._historical_data_.index.max(),
                        colors='k', linestyles='--')
             plt.tight_layout()
         else:
@@ -124,7 +123,7 @@ class FundValue:
             plt.xlabel('Log Return')
             plt.ylabel('Frequency')
             plt.grid()
-            plt.vlines(self._average_return_, ymin=0, ymax=histogram[0].max()*1.1, colors='k', linestyles='--')
+            plt.vlines(self._drift_, ymin=0, ymax=histogram[0].max()*1.1, colors='k', linestyles='--')
             plt.ylim(top = histogram[0].max()*1.1)
             plt.tight_layout()
             
@@ -168,7 +167,7 @@ class FundValue:
         
         # Compute the random realizations for the daily returns
         z = norm.ppf(np.random.rand(business_days_to_end, int(number_of_realizations)))
-        daily_returns = np.exp(self._drift_+self._return_std_dev_*z)
+        daily_returns = np.exp(self._log_drift_+self._volatility_*z)
         
         # Compute the predicted time-value realizations
         self._predicted_time_value_realizations_ = np.zeros_like(daily_returns)
