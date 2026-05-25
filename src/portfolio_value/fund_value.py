@@ -129,7 +129,7 @@ class FundValue:
             
     def predict_value_monte_carlo(self, end_date, start_date=None, 
                                   number_of_realizations=10000,
-                                  transactions=None):
+                                  transactions=None, seed=None):
         """
         Predicts the future potential time-value path of the fund over a number of 
         realizations using the brownian motion formula. 
@@ -148,6 +148,9 @@ class FundValue:
             A Pandas DataFrame with transactions (either deposits or withdrawals)
             into the investment account. The column label for the transaction 
             amount should be 'Amount' (cap sensitive).
+        seed : int, optional
+            The seed for the random number generator that develops the Brownian
+            motion. 
 
         Returns
         -------
@@ -166,7 +169,8 @@ class FundValue:
         self._predicted_value_date_range_ = business_day_vector_to_target(start_date,end_date)
         
         # Compute the random realizations for the daily returns
-        z = norm.ppf(np.random.rand(business_days_to_end, int(number_of_realizations)))
+        rng = np.random.default_rng(seed=seed)
+        z = norm.ppf(rng.uniform(size=(business_days_to_end, int(number_of_realizations))))
         daily_returns = np.exp(self._log_drift_+self._volatility_*z)
         
         # Compute the predicted time-value realizations
