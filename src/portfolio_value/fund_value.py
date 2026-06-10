@@ -191,7 +191,7 @@ class FundValue:
         Computes the expected (i.e., mean) future time-value of the fund
         as an ndarray.
         """
-        return self._predicted_time_value_realizations_.mean(axis=1)
+        return self.predicted_time_value_realizations.mean(axis=1)
     
     def future_fund_value_quantile(self, quantile):
         """
@@ -209,29 +209,19 @@ class FundValue:
         ndarray
             The quantile for the predicted future time-value
         """
-        return np.quantile(self._predicted_time_value_realizations_, quantile, axis=1)
-
-    def future_fund_value_std_dev(self, sigma):
+        return np.quantile(self.predicted_time_value_realizations, quantile, axis=1)
+    
+    def median_future_value(self):
         """
-        ***This is not a good method to use because the future value follows a log normal distribution***
-
-        Computes the expected (i.e., mean) future time-value of the fund
-        with the specified number of standard deviations applied.
-
-        Parameters
-        ----------
-        sigma : float
-            The number of standard deviations to add (or subtract) from
-            the expected future value of the fund.
-
+        Computes the median of the predicted future time-value of the 
+        fund from the Monte Carlo simulations. 
+        
         Returns
         -------
-        future_value : ndarray
-            The expected future value of the fund with the number of 
-            standard deviations applied. 
+        ndarray
+            The median of the predicted future time-value
         """
-        std_dev = self._predicted_time_value_realizations_.std(axis=1)
-        return self._predicted_time_value_realizations_.mean(axis=1) + sigma*std_dev
+        return np.median(self.predicted_time_value_realizations, axis=1)
     
     def plot_expected_value(self, quantiles=None):
         """
@@ -257,3 +247,99 @@ class FundValue:
         ax.yaxis.set_major_formatter(FuncFormatter(lambda x, pos: f'{x:,.0f}'))
         fig.tight_layout()
         return fig, ax
+    
+    def percent_paths_gained(self):
+        """
+        The percent of sample paths that have gained as a function of time.
+
+        Returns
+        -------
+        ndarray
+            The percent of sample paths (in percent, 50 not 0.5 for 50%) that 
+            have increased in value since the initial investment.
+        """
+        prcnt_gained = ((self.predicted_time_value_realizations-self._initial_value_)>0).mean(axis=-1)*100
+        return prcnt_gained
+    
+    def fund_var(self, quantile=0.95, on_returns=False):
+        """
+        Computes the value at risk (VaR) per the supplied quantile. I.E., if 
+        the quantile is the 95th percentile, the VaR represents the loss values
+        that 5% of losses will be worse than. 
+
+        Parameters
+        ----------
+        quantile : float, optional
+            The quantile to assess the VaR against. The value should be 
+            supplied in decimal format, so 0.95 instead of 95 for 95%. 
+            The default quantile is the 95th percentile. 
+        on_returns : bool, optional
+            If the reported value should be reported based on 
+            percentage returns instead of dollar values. The 
+            default is False.
+
+        Returns
+        -------
+        ndarray
+            The VaR vs. time per the supplied quantile.
+        """
+        if on_returns:
+            losses = -100*(self.predicted_time_value_realizations/self._initial_value_ - 1)
+        else:
+            losses = self._initial_value_ - self.predicted_time_value_realizations
+        return np.quantile(losses, quantile, axis=1)
+
+    def fund_cvar(self, quantile=0.95, on_returns=False):
+        """
+        Computes the conditional value at risk (CVaR) per the supplied quantile. 
+        I.E., if the quantile is the 95th percentile, the CVaR represents the 
+        expected (average) losses in the worst 5% of of outcomes. 
+
+        Parameters
+        ----------
+        quantile : float, optional
+            The quantile to assess the CVaR against. The value should be 
+            supplied in decimal format, so 0.95 instead of 95 for 95%. 
+            The default quantile is the 95th percentile. 
+        on_returns : bool, optional
+            If the reported value should be reported based on 
+            percentage returns instead of dollar values. The 
+            default is False.
+
+        Returns
+        -------
+        ndarray
+            The CVaR vs. time per the supplied quantile.
+        """
+        if on_returns:
+            losses = -100*(self.predicted_time_value_realizations/self._initial_value_ - 1)
+        else:
+            losses = self._initial_value_ - self.predicted_time_value_realizations
+        
+        k = int(np.ceil(quantile*losses.shape[1]))
+        partitioned_losses = np.partition(losses, k)
+        
+        tail_losses = partitioned_losses[:, k:]
+        return tail_losses.mean(axis=1)
+    
+    def fund_max_loss(self, on_returns=False):
+        """
+        Computes the maximum potential loss of the given asset.
+
+        Parameters
+        ----------
+        on_returns : bool, optional
+            If the reported value should be reported based on 
+            percentage returns instead of dollar values. The 
+            default is False.
+
+        Returns
+        -------
+        ndarray
+            The maximum loss vs. time.
+        """
+        if on_returns:
+            losses = -100*(self.predicted_time_value_realizations/self._initial_value_ - 1)
+        else:
+            losses = self._initial_value_ - self.predicted_time_value_realizations
+        return losses.max(axis=1)
