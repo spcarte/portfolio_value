@@ -58,11 +58,11 @@ class PortfolioValue:
         self.historical_data = historical_data
         self.allocations = fund_allocations
         self._initial_value_ = float(initial_value)
-        self._log_return_ = np.log(1+self._historical_data_.pct_change().to_numpy())[1:]
+        self._log_return_ = np.log(1+self._historical_data_.pct_change())[1:]
 
         # Data for future value predictions
-        self._average_return_ = self._log_return_.mean(axis=0)
-        self._asset_covariance_ = np.cov(self._log_return_.T)
+        self._average_return_ = self._log_return_.mean().to_numpy()
+        self._asset_covariance_ = self._log_return_.cov().to_numpy()
         self._drift_ = self._average_return_ - (0.5*np.diag(self._asset_covariance_)) # Sometimes called log-drift
 
         # Predicted time-value information, initialized to none
@@ -93,11 +93,7 @@ class PortfolioValue:
         """
         Returns the log returns from the historical data as a Pandas Dataframe.
         """
-        log_returns = {}
-        for ii, ticker in enumerate(self._tickers_):
-            log_returns[ticker] = self._log_return_[:,ii]
-        return pd.DataFrame(index=self.historical_data.index[1:],
-                            data=log_returns)
+        return self._log_return_
 
     @property
     def allocations(self):
