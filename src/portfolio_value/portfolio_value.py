@@ -189,27 +189,31 @@ class PortfolioValue:
         # Applying the transactions, if necessary
         if transactions is not None:
             for ii in range(transactions.shape[0]):
+                transaction = transactions.iloc[ii]
                 day_ind = find_nearest_date_index(transactions.index[ii].to_pydatetime(), 
                                                   self._predicted_value_date_range_)
-                self._predicted_time_value_realizations_[:, day_ind, 0] += transactions['Amount'][ii]
-                self._predicted_time_value_realizations_[:, day_ind, 1:] += (allocation_values[:,0]
-                                                                             *transactions['Amount'][ii])
+                self._predicted_time_value_realizations_[:, day_ind, 0] += transaction['Amount']
+                self._predicted_time_value_realizations_[:, day_ind, 1:] += (allocation_values[:,ii]
+                                                                             *transaction['Amount'])
 
         for ii in range(1,business_days_to_end):
+            # Computing the asset values based on the simulated returns
+            loop_asset_values = self._predicted_time_value_realizations_[:,ii-1,1:]*daily_returns[:,ii,:]
+            # Setting the asset value to zero if it goes negative
+            loop_asset_values[loop_asset_values<=0] = 0
+
+            # I'm not sure if I'm handling the balancing correctly
             if rebalance is True:
-                # Predict the total value of the portfolio from the previous time step
-                self._predicted_time_value_realizations_[:,ii,0] += np.sum(self._predicted_time_value_realizations_[:,ii-1,1:]
-                                                                        *daily_returns[:,ii,:],axis=-1)
-                # Re-balance the portfolio base on the asset allocations
-                self._predicted_time_value_realizations_[:,ii,1:] += (allocation_values[np.newaxis,:,ii]
+                # Set the total value of the portfolio from the predicted asset values at the step
+                self._predicted_time_value_realizations_[:,ii,0] += np.sum(loop_asset_values,axis=-1)
+                # Re-balance the portfolio based on the asset allocations
+                self._predicted_time_value_realizations_[:,ii,1:] = (allocation_values[np.newaxis,:,ii]
                                                         *self._predicted_time_value_realizations_[:,ii,0][...,np.newaxis])
             else:
-                # Predict the value of the assets from the previous time step
-                self._predicted_time_value_realizations_[:,ii,1:] += (self._predicted_time_value_realizations_[:,ii-1,1:]
-                                                                      *daily_returns[:,ii,:])
+                # Set the value of the assets based on the predicted asset values at this step
+                self._predicted_time_value_realizations_[:,ii,1:] += loop_asset_values
                 # Re-balance the portfolio base on the asset allocations
-                self._predicted_time_value_realizations_[:,ii,0] += np.sum(self._predicted_time_value_realizations_[:,ii,1:],
-                                                                           axis=-1)
+                self._predicted_time_value_realizations_[:,ii,0] += np.sum(loop_asset_values,axis=-1)
         return self
     
     def future_portfolio_value_quantile(self, quantile):
