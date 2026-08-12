@@ -178,8 +178,9 @@ class FundValue:
         self._predicted_time_value_realizations_[0,:] = self._initial_value_
         if transactions is not None:
             for ii in range(transactions.shape[0]):
+                transaction = transactions.iloc[ii]
                 day_ind = find_nearest_date_index(transactions.index[ii].to_pydatetime(), self._predicted_value_date_range_)
-                self._predicted_time_value_realizations_[day_ind,:] += transactions['Amount'][ii]
+                self._predicted_time_value_realizations_[day_ind,:] += transaction['Amount']
         for ii in range(1,business_days_to_end):
             self._predicted_time_value_realizations_[ii,:] += self._predicted_time_value_realizations_[ii-1,:]*daily_returns[ii,:]
                 
