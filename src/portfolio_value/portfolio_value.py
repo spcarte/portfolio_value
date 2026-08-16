@@ -193,7 +193,7 @@ class PortfolioValue:
                 day_ind = find_nearest_date_index(transactions.index[ii].to_pydatetime(), 
                                                   self._predicted_value_date_range_)
                 self._predicted_time_value_realizations_[:, day_ind, 0] += transaction['Amount']
-                self._predicted_time_value_realizations_[:, day_ind, 1:] += (allocation_values[:,ii]
+                self._predicted_time_value_realizations_[:, day_ind, 1:] += (allocation_values[:,day_ind]
                                                                              *transaction['Amount'])
 
         for ii in range(1,business_days_to_end):
