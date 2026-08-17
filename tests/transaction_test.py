@@ -1,5 +1,5 @@
 """
-Performs tests to make sure the asset allocations work as expected. 
+Performs tests to make sure the asset allocations and transactions work as expected. 
 """
 import numpy as np
 import datetime as dt
