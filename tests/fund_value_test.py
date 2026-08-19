@@ -53,7 +53,7 @@ def simulated_data_known_stats():
     number_samples=500
 
     shocks = single_rng.normal(loc=0, scale=1, size=number_samples-1)
-    shocks = shocks*std/shocks.std()
+    shocks = shocks*std/shocks.std(ddof=1) #using sample std
     shocks = shocks - shocks.mean()
 
     sample_data = np.zeros(number_samples, dtype=float)
@@ -79,7 +79,8 @@ def test_fund_value_expectation(simulated_data):
     stock_fv = pv.FundValue(simulated_stock['test'], initial_value=initial_value)
     stock_fv.predict_value_monte_carlo(start_date=simulated_stock.index.to_pydatetime()[0],
                                        end_date=simulated_stock.index.to_pydatetime()[-1],
-                                       number_of_realizations=10000)
+                                       number_of_realizations=10000,
+                                       seed=30)
 
     simulated_stock_no_volatility = np.zeros(stock_fv.expected_future_fund_value.shape[0], dtype=float)
     simulated_stock_no_volatility[0] = initial_value
@@ -87,7 +88,7 @@ def test_fund_value_expectation(simulated_data):
         simulated_stock_no_volatility[ii] = simulated_stock_no_volatility[ii-1]*np.exp(stock_fv._drift_)
 
     predicted_expectation = stock_fv.expected_future_fund_value
-    max_error_from_expectation = np.max((predicted_expectation-simulated_stock_no_volatility)/predicted_expectation)*100
+    max_error_from_expectation = np.max(100*(predicted_expectation-simulated_stock_no_volatility)/predicted_expectation)
 
     assert max_error_from_expectation < 0.5
 
