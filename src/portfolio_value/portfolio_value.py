@@ -61,7 +61,7 @@ class PortfolioValue:
         self._log_return_ = np.log(1+self._historical_data_.pct_change())[1:]
 
         # Data for future value predictions
-        self._asset_covariance_ = self._log_return_.cov().to_numpy()
+        self._asset_covariance_ = self._log_return_.cov(ddof=1).to_numpy() # Using sample covariance
         self._log_drift_ = self._log_return_.mean().to_numpy()
         self._drift_ = self._log_drift_ + (0.5*np.diag(self._asset_covariance_))
 
