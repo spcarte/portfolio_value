@@ -61,9 +61,9 @@ class PortfolioValue:
         self._log_return_ = np.log(1+self._historical_data_.pct_change())[1:]
 
         # Data for future value predictions
-        self._average_return_ = self._log_return_.mean().to_numpy()
         self._asset_covariance_ = self._log_return_.cov().to_numpy()
-        self._drift_ = self._average_return_ - (0.5*np.diag(self._asset_covariance_)) # Sometimes called log-drift
+        self._log_drift_ = self._log_return_.mean().to_numpy()
+        self._drift_ = self._log_drift_ + (0.5*np.diag(self._asset_covariance_))
 
         # Predicted time-value information, initialized to none
         self._predicted_value_date_range_ = None
@@ -172,7 +172,7 @@ class PortfolioValue:
         l = np.linalg.cholesky(self._asset_covariance_)
         z = norm.ppf(np.random.rand(int(number_of_realizations), business_days_to_end, 
                                     len(self._tickers_)))[...,np.newaxis]
-        daily_returns = np.exp(self._drift_[:,np.newaxis]+l[np.newaxis,np.newaxis,...]@z)[...,0]
+        daily_returns = np.exp(self._log_drift_[:,np.newaxis]+l[np.newaxis,np.newaxis,...]@z)[...,0]
 
         # Interpolating the asset allocations to all the simulation dates
         allocation_values = np.zeros((len(self._tickers_), business_days_to_end), dtype=float)       
