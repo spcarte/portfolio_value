@@ -6,3 +6,4 @@ src/portfolio_value.egg-info/SOURCES.txt
 src/portfolio_value.egg-info/top_level.txt
 .vscode/settings.json
 
+.coverage
