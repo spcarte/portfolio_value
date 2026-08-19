@@ -43,9 +43,9 @@ class FundValue:
         self.historical_data = historical_data
         self._initial_value_ = float(initial_value)
         self._log_return_ = np.log(1+self._historical_data_.pct_change().to_numpy())[1:]
-        self._drift_ = self._log_return_.mean()
+        self._log_drift_ = self._log_return_.mean()
         self._volatility_ = self._log_return_.std()
-        self._log_drift_ = self._drift_ - (0.5*(self._volatility_**2))
+        self._drift_ = self._log_drift_ + (0.5*(self._volatility_**2))
 
         # Predicted time-value information, initialized to none
         self._predicted_value_date_range_ = None
