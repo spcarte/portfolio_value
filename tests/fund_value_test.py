@@ -6,6 +6,7 @@ import datetime as dt
 import holidays
 import portfolio_value as pv
 import pandas as pd
+from scipy.stats import normaltest, kurtosistest, skewtest
 import pytest
 
 def work_days(start_date, number_days):
@@ -91,6 +92,41 @@ def test_fund_value_expectation(simulated_data):
     max_error_from_expectation = np.max(100*(predicted_expectation-simulated_stock_no_volatility)/predicted_expectation)
 
     assert max_error_from_expectation < 0.5
+
+def test_fund_value_predicted_distribution(simulated_data):
+    """
+    Tests that the monte carlo simulation predicts returns with a log-normal distribution
+    """
+    initial_value = 1000
+    simulated_stock = simulated_data
+
+    stock_fv = pv.FundValue(simulated_stock['test'], initial_value=initial_value)
+    stock_fv.predict_value_monte_carlo(start_date=simulated_stock.index.to_pydatetime()[0],
+                                       end_date=simulated_stock.index.to_pydatetime()[-1],
+                                       number_of_realizations=10000,
+                                       seed=50)
+
+    log_returns = np.log(stock_fv._predicted_time_value_realizations_[1:,:]/stock_fv._predicted_time_value_realizations_[:-1,:])
+
+    # Testing for log-normal returns on a path
+    _, normal_pvalue_paths = normaltest(log_returns, axis=0)
+    _, skew_pvalue_paths = skewtest(log_returns, axis=0)
+    _, kurtosis_pvalue_paths = kurtosistest(log_returns, axis=0)
+
+    # Decided that a p-value greater than 5% passes. 95% of paths should pass the normality tests.
+    assert round(sum(100*normal_pvalue_paths >= 5)/normal_pvalue_paths.shape[0],2) >= 0.95 
+    assert round(sum(100*skew_pvalue_paths >= 5)/skew_pvalue_paths.shape[0],2) >= 0.95 
+    assert round(sum(100*kurtosis_pvalue_paths >= 5)/kurtosis_pvalue_paths.shape[0],2) >= 0.95 
+
+    # Testing for log-normal returns across all paths
+    _, normal_pvalue_days = normaltest(log_returns, axis=1)
+    _, skew_pvalue_days = skewtest(log_returns, axis=1)
+    _, kurtosis_pvalue_days = kurtosistest(log_returns, axis=1)
+
+    # Decided that a p-value greater than 5% passes. 95% of days should pass the normality tests.
+    assert round(sum(100*normal_pvalue_days >= 5)/normal_pvalue_days.shape[0],2) >= 0.95 
+    assert round(sum(100*skew_pvalue_days >= 5)/skew_pvalue_days.shape[0],2) >= 0.95 
+    assert round(sum(100*kurtosis_pvalue_days >= 5)/kurtosis_pvalue_days.shape[0],2) >= 0.95 
 
 def test_fund_value_stats(simulated_data_known_stats):
     """

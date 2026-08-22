@@ -6,6 +6,7 @@ import datetime as dt
 import holidays
 import portfolio_value as pv
 import pandas as pd
+from scipy.stats import normaltest, skewtest, kurtosistest
 import pytest
 
 def work_days(start_date, number_days):
@@ -138,7 +139,65 @@ def test_portfolio_value_expectation(simulated_data):
     max_total_error = np.max(100*np.abs((expected_value_total - no_volatility.sum(axis=0))/expected_value_total))
     assert max_total_error < 0.5
 
+def test_portfolio_value_predicted_distribution(simulated_data):
+    """
+    Tests that the predicted future values follow a log-normal distribution
+    """
+    simulated_portfolio = simulated_data
+    pv_initial_value = np.array([200, 200])
+    allocations = pd.DataFrame({'test':50, 'test2':50}, 
+                            index=[dt.datetime(2026,8,1), dt.datetime(2027,5,1)])
+    
+    test_pv = pv.PortfolioValue(simulated_portfolio, allocations, 
+                                initial_value=pv_initial_value.sum())
 
+    # Manually set the covariance to have zero correlation between the stocks
+    covariance = test_pv._asset_covariance_.copy()
+    covariance[0,1] = 1e-16
+    covariance[1,0] = 1e-16
+    test_pv._asset_covariance_ = covariance
 
+    test_pv.predict_value_monte_carlo(start_date=simulated_portfolio.index[0],
+                                      end_date=dt.datetime(2048,1,1),
+                                      number_of_realizations=10000, rebalance=False)
+
+    # Tests the total value
+    total_returns = test_pv._predicted_time_value_realizations_[...,0]
+    total_log_returns = np.log(total_returns[1:,:]/total_returns[:-1,:])
+
+    _, total_normal_pvalue = normaltest(total_log_returns, axis=0)
+    _, total_kurtosis_pvalue = kurtosistest(total_log_returns, axis=0)
+    _, total_skew_pvalue = skewtest(total_log_returns, axis=0)
+
+    # Decided that a p-value greater than 5% passes. 90% of paths should pass the normality tests.
+    assert round(sum(100*total_normal_pvalue >= 5)/total_normal_pvalue.shape[0],2) >= 0.9
+    assert round(sum(100*total_kurtosis_pvalue >= 5)/total_kurtosis_pvalue.shape[0],2) >= 0.9
+    assert round(sum(100*total_skew_pvalue >= 5)/total_skew_pvalue.shape[0],2) >= 0.9
+
+    # Tests the "test" value
+    test_returns = test_pv._predicted_time_value_realizations_[...,1]
+    test_log_returns = np.log(test_returns[1:,:]/test_returns[:-1,:])
+
+    _, test_normal_pvalue = normaltest(test_log_returns, axis=0)
+    _, test_kurtosis_pvalue = kurtosistest(test_log_returns, axis=0)
+    _, test_skew_pvalue = skewtest(test_log_returns, axis=0)
+
+    # Decided that a p-value greater than 5% passes. 90% of paths should pass the normality tests.
+    assert round(sum(100*test_normal_pvalue >= 5)/test_normal_pvalue.shape[0],2) >= 0.9
+    assert round(sum(100*test_kurtosis_pvalue >= 5)/test_kurtosis_pvalue.shape[0],2) >= 0.9
+    assert round(sum(100*test_skew_pvalue >= 5)/test_skew_pvalue.shape[0],2) >= 0.9
+
+    # Tests the "test2" value
+    test2_returns = test_pv._predicted_time_value_realizations_[...,2]
+    test2_log_returns = np.log(test2_returns[1:,:]/test2_returns[:-1,:])
+
+    _, test2_normal_pvalue = normaltest(test2_log_returns, axis=0)
+    _, test2_kurtosis_pvalue = kurtosistest(test2_log_returns, axis=0)
+    _, test2_skew_pvalue = skewtest(test2_log_returns, axis=0)
+
+    # Decided that a p-value greater than 5% passes. 90% of paths should pass the normality tests.
+    assert round(sum(100*test2_normal_pvalue >= 5)/test2_normal_pvalue.shape[0],2) >= 0.9 
+    assert round(sum(100*test2_kurtosis_pvalue >= 5)/test2_kurtosis_pvalue.shape[0],2) >= 0.9
+    assert round(sum(100*test2_skew_pvalue >= 5)/test2_skew_pvalue.shape[0],2) >= 0.9
 
     
